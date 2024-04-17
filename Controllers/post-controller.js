@@ -43,4 +43,17 @@ const getAllPost = async (req, res) => {
   }
 };
 
-module.exports = { createPost, getAllPost };
+const getPostById = async(req,res) => {
+    try {
+        const id = req.params.id;
+        const post = await Post.find({_id: id});
+        res.status(200).json(post);
+    } catch (error) {
+        res.status(500).json({msg:"internal server error"})
+    }
+}
+
+const deletePostById = async(req,res) => {
+    
+}
+module.exports = { createPost, getAllPost,getPostById };

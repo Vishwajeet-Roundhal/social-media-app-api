@@ -5,5 +5,6 @@ const {userAuth} = require("../Middlewares/auth-middleware")
 
 router.route("/create").post(userAuth,postController.createPost)
 router.route("/feed").get(postController.getAllPost)
+router.route("/:id").get(postController.getPostById)
 
 module.exports = router
