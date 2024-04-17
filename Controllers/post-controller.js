@@ -38,9 +38,6 @@ const getAllPost = async (req, res) => {
         currentPage: parseInt(page),
         totalPages: Math.ceil(posts.length / limit),
       });
-
-    // const posts = await Post.find();
-    // res.status(200).json(posts);
   } catch (error) {
     res.status(500).json({ msg: "internal server error" });
   }
