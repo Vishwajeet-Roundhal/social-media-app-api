@@ -4,5 +4,5 @@ This API provides endpoints for social media platforms. It allows developers to 
 ## Installation
 1. Clone repo
 2. Run `npm i`
-3. connect with monogodb
+3. connect with mongodb
 4. run `node app`
