@@ -1,5 +1,5 @@
 const Post = require("../Models/Post");
-const Comment  =require("../Models/Comment")
+const Comment = require("../Models/Comment");
 
 const createPost = async (req, res) => {
   try {
@@ -90,6 +90,9 @@ const likePost = async (req, res) => {
     const id = req.params.id;
     const user = req.user._id;
 
+    if (id.likes.include(user))
+      return res.status(409).json({ msg: "user already liked" });
+
     const updatePost = await Post.updateOne(
       { _id: id },
       {
@@ -127,59 +130,77 @@ const addCommentToPost = async (req, res) => {
   try {
     const id = req.params.id;
     const user = req.user._id;
-    const {content} = req.body;
+    const { content } = req.body;
 
     const ncomment = new Comment({
       content,
-      user:user,
-      post:id,
+      user: user,
+      post: id,
     });
     await ncomment.save();
 
-    await Post.findByIdAndUpdate(id,{ $push : { comments: ncomment._id } });
+    await Post.findByIdAndUpdate(id, { $push: { comments: ncomment._id } });
 
-    res.status(200).json(ncomment)
-
+    res.status(200).json(ncomment);
   } catch (error) {
     res.status(500).json({ msg: "internal server errror at comment" });
   }
 };
 
-const deleteComment = async(req,res) => {
+const deleteComment = async (req, res) => {
   try {
     const id = req.params.id;
     const commentId = req.params.commentId;
-    const user =req.user._id;
+    const user = req.user._id;
 
-    const post  = await Post.find(id);
-    const comment = post.comments.find(comment => comment._id.equals(commentId))
+    const post = await Post.find(id);
+    const comment = post.comments.find((comment) =>
+      comment._id.equals(commentId)
+    );
 
-    if(!comment.user.equals(user)){
-      res.status(403).json({msg:"you are not authorized to delete this comment"})
+    if (!comment.user.equals(user)) {
+      res
+        .status(403)
+        .json({ msg: "you are not authorized to delete this comment" });
     }
     post.comments.pull(commentId);
     await post.save();
 
-    res.status(200).json(post)
-
+    res.status(200).json(post);
   } catch (error) {
-    res.status(500).json({msg:"internal server error"})
+    res.status(500).json({ msg: "internal server error" });
   }
-} 
+};
 
+const getPopularPost = async (req, res) => {
+  try {
+    let sortCriteria = {};
+    
+    if (sortBy === 'likes') {
+      sortCriteria = { likes: -1 }; 
+    } else if (sortBy === 'comments') {
+      sortCriteria = { comments: -1 }; 
+    } else {
+      throw new Error('Invalid sorting criteria');
+    }
+    const popularPosts = await Post.find().sort(sortCriteria);
 
-
-
+    res.status(200).json(popularPosts);
+  } catch (error) {
+    res.status(500).json({ msg: "internal server error" });
+  }
+};
 
 module.exports = {
   createPost,
   getAllPost,
   getPostById,
-  deletePostById,
-  updatePostById,
-  getPostsByUser,
-  likePost,
-  unlikePost,
-  addCommentToPost,
-  deleteComment,
+  deletePostById, //testing
+  updatePostById, //testing
+  getPostsByUser, //testing
+  likePost, //testing
+  unlikePost, //testing
+  addCommentToPost, //testing
+  deleteComment, //testing
+  getPopularPost
 };

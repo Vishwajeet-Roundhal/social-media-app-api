@@ -1,4 +1,5 @@
 const User = require("../Models/User");
+const Report = require("../Models/Report")
 const bcrypt = require("bcryptjs");
 
 const register = async (req, res) => {
@@ -150,11 +151,28 @@ const followersList = async (req, res) => {
 
     const followers = user.followers.map((follower) => follower.username);
 
-    res.status(200).json({
-      followers,
-    });
+    res.status(200).json(followers);
   } catch (error) {
     res.status(500).json({ msg: "internel server eror" });
+  }
+};
+
+const followingList = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const userFollowing = await User.findOne({ _id: userId }).populate(
+      "following",
+      "username"
+    );
+
+    if (!userFollowing) {
+      res.status(200).json({ msg: "Yu are not following anyone" });
+    }
+
+    const following = userFollowing.following.map((follow) => follow.username);
+    res.status(200).json(following);
+  } catch (error) {
+    res.status(500).json({ msg: "internel server error" });
   }
 };
 
@@ -165,11 +183,78 @@ const unfollowUser = async (req, res) => {
 
     await User.findByIdAndUpdate(userId, { $pull: { following: followingId } });
 
-    res.status(200).json({msg:"unfollowed sucessfully"});
+    res.status(200).json({ msg: "unfollowed sucessfully" });
   } catch (error) {
     res.status(500).json({ msg: "server error" });
   }
 };
+
+const removePostByUser = async (req, res) => {
+  try {
+    const postId = req.params.postId;
+    const userId = req.user._id;
+
+    const user = await User.findByIdAndUpdate(
+      { _id: userId },
+      { $pull: { posts: postId } }
+    );
+    if (!user) res.status(404).json({ msg: "no post found " });
+    res.status(200).json({ msg: "post has been deleted" });
+  } catch (error) {
+    res.status(500).json({ msg: "internel server error" });
+  }
+};
+
+const deleteUser = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    if (!userId) res.status(401).json({ msg: "NO user id found" });
+
+    const user = await User.findOneAndDelete({ _id: userId });
+    res.status(200).json({ msg: "user deleted" });
+  } catch (error) {
+    res.status(500).json({ msg: "internel server error" });
+  }
+};
+
+const searchUser = async (req, res) => {
+  try {
+    const users = await User.find({
+      username: { $regex: req.query.username, $options: "i" },
+    }).select("-password");
+
+    if(!users) res.status(404).json({msg:"no user found"})
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json({ msg: "Internal Server Error" });
+  }
+};
+
+const reportUser = async(req,res) => {
+  try {
+    const reportedId = req.params.reportedId;
+    const reporter = req.user._id;
+    const { reason , details } = req.body;
+    const isReported = await User.findOne({_id : reportedId});
+
+    if(!isReported) res.status(404).json({msg:"user not found"});
+
+    const report  = new Report({
+      reporter: reporter,
+      reportedUser: reportedId,
+      reason,
+      details
+    });
+
+    await report.save();
+
+    res.status(200).json({msg:"user reported"})
+
+  } catch (error) {
+    res.status(500).json({msg:"interna server error"})
+  }
+}
+
 
 module.exports = {
   register,
@@ -180,5 +265,10 @@ module.exports = {
   getUserByUsername,
   followUser,
   followersList,
-  unfollowUser
+  unfollowUser,
+  followingList, //testing..
+  removePostByUser,
+  deleteUser,
+  searchUser,
+  reportUser
 };

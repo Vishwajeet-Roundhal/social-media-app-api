@@ -32,7 +32,6 @@ const userSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now },
     bio: { type: String },
     profilePicture: { type: String },
-
   });
 
   userSchema.methods.generateToken = async function() {

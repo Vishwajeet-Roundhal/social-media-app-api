@@ -9,5 +9,6 @@ router.route("/users").get(authController.getUsersData)
 router.route("/user/:id").get(authController.getUserById)
 
 router.route("/follow/:followingId").put(userAuth,authController.followUser);
+router.route("/report/:reportedId").put(userAuth,authController.reportUser)
 
 module.exports = router
