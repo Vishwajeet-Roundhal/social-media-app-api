@@ -8,8 +8,8 @@ router.route("/feed").get(postController.getAllPost)
 router.route("/:id").get(postController.getPostById)
 
 router.route("/posts/:id").get(userAuth,postController.getPostsByUser);
-router.route("/like/:id").patch(userAuth,postController.likePost);
+router.route("/like/:postId").patch(userAuth,postController.likePost);
 router.route("/comment/:id").put(userAuth,postController.addCommentToPost)
-
+router.route("/postLikes/:postId").get(userAuth,postController.getLikesByPost)
 
 module.exports = router

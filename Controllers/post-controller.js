@@ -2,6 +2,7 @@ const Post = require("../Models/Post");
 const Comment = require("../Models/Comment");
 const User = require("../Models/User");
 const Report = require("../Models/Report");
+const Like = require("../Models/Like");
 
 const createPost = async (req, res) => {
   try {
@@ -89,20 +90,33 @@ const getPostsByUser = async (req, res) => {
 
 const likePost = async (req, res) => {
   try {
-    const id = req.params.id;
-    const user = req.user._id;
+    const postId = req.params.postId;
+    const userId = req.user._id;
 
-    if (id.likes.include(user))
-      return res.status(409).json({ msg: "user already liked" });
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ msg: "Post not found" });
+    }
+    if (post.likes.includes(userId)) { // Correct method name
+      return res.status(409).json({ msg: "User already liked the post" });
+    }
+
+    // if (postId.likes.include(userId))
+    //   return res.status(409).json({ msg: "user already liked" });
 
     const updatePost = await Post.updateOne(
-      { _id: id },
+      { _id: postId },
       {
         $addToSet: {
-          likes: user,
+          likes: userId,
         },
       }
     );
+    console.log(updatePost);
+
+    const newLike = new Like({ user: userId, post: postId });
+    await newLike.save();
+
     res.status(200).json(updatePost);
   } catch (error) {
     res.status(500).json({ msg: "internal server" });
@@ -114,6 +128,14 @@ const unlikePost = async (req, res) => {
     const id = req.params.id;
     const user = req.user._id;
 
+    const post = await Post.findById(id);
+    if (!post) {
+      return res.status(404).json({ msg: "Post not found" });
+    }
+    if (!post.likes.includes(id)) { // Check if the user has liked the post
+      return res.status(409).json({ msg: "User has not liked the post" });
+    }
+
     const updatePost = await Post.updateOne(
       { _id: id },
       {
@@ -122,6 +144,9 @@ const unlikePost = async (req, res) => {
         },
       }
     );
+
+    await Like.deleteOne({user: user,post: id});
+
     res.status(200).json(updatePost);
   } catch (error) {
     res.status(500).json({ msg: "internal server" });
@@ -264,7 +289,6 @@ const reportPost = async (req, res) => {
   }
 };
 
-
 const savePost = async (req, res) => {
   try {
     const { postId } = req.body;
@@ -285,10 +309,9 @@ const savePost = async (req, res) => {
   }
 };
 
-
 const getSavedPosts = async (req, res) => {
   try {
-    const userId = req.user._id; 
+    const userId = req.user._id;
     const user = await User.findById(userId).populate("savedPosts");
 
     if (!user) {
@@ -304,6 +327,29 @@ const getSavedPosts = async (req, res) => {
     res.status(500).json({ msg: "Internal Server Error" });
   }
 };
+
+const getLikes = async (req, res) => {
+  try {
+    const likes = await Like.find();
+    res.status(200).json(likes)
+  } catch (error) {
+    console.error("Error fetching likes:", error);
+    res.status(500).json({ error: "Could not get likes for post." });
+  }
+};
+
+const getLikesByPost = async(req,res) => {
+  try {
+    const postId = req.params.postId;
+
+    const likes = await Like.find({ post: postId }).populate('user', 'username');
+
+    res.status(200).json(likes);
+  } catch (error) {
+    console.error("Error fetching likes for post:", error);
+    res.status(500).json({ msg: "Internal server error" });
+  }
+}
 
 module.exports = {
   createPost,
@@ -322,5 +368,7 @@ module.exports = {
   userFeed,
   reportPost,
   savePost,
-  getSavedPosts
+  getSavedPosts,
+  getLikes,
+  getLikesByPost
 };
