@@ -1,5 +1,7 @@
 const Post = require("../Models/Post");
 const Comment = require("../Models/Comment");
+const User = require("../Models/User");
+const Report = require("../Models/Report");
 
 const createPost = async (req, res) => {
   try {
@@ -175,19 +177,131 @@ const deleteComment = async (req, res) => {
 const getPopularPost = async (req, res) => {
   try {
     let sortCriteria = {};
-    
-    if (sortBy === 'likes') {
-      sortCriteria = { likes: -1 }; 
-    } else if (sortBy === 'comments') {
-      sortCriteria = { comments: -1 }; 
+
+    if (sortBy === "likes") {
+      sortCriteria = { likes: -1 };
+    } else if (sortBy === "comments") {
+      sortCriteria = { comments: -1 };
     } else {
-      throw new Error('Invalid sorting criteria');
+      throw new Error("Invalid sorting criteria");
     }
     const popularPosts = await Post.find().sort(sortCriteria);
 
     res.status(200).json(popularPosts);
   } catch (error) {
     res.status(500).json({ msg: "internal server error" });
+  }
+};
+
+const getLatestPost = async (req, res) => {
+  try {
+    const latestPost = await Post.findOne().sort("-createdAt");
+    !latestPost
+      ? res.status(404).json({ msg: "No posts found" })
+      : res.status(200).json(latestPost);
+  } catch (error) {
+    res.status(500).json({ msg: "internal server error" });
+  }
+};
+
+const searchPost = async (req, res) => {
+  try {
+    const keyword = req.body;
+    const posts = await Post.find({
+      content: {
+        $regex: keyword,
+        $options: "i",
+      },
+    });
+    !posts
+      ? res.status(404).json({ msg: "no post found" })
+      : res.status(200).json(posts);
+  } catch (error) {
+    res.status(500).json({ msg: "internal servere error" });
+  }
+};
+
+const userFeed = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const userFollowing = await User.find({ _id: userId }).populate(
+      "following"
+    );
+
+    const following = userFollowing.following.map((item) => item._id);
+
+    const followingPost = await Post.find({ user: { $in: following } });
+
+    const popularPost = await Post.find()
+      .sort({ likes: -1 } || { comments: -1 })
+      .limit(10);
+
+    const feed = [...popularPost, ...followingPost];
+
+    res.status(200).json(feed);
+  } catch (error) {
+    res.status(500).json({ msg: "internal server error" });
+  }
+};
+
+const reportPost = async (req, res) => {
+  try {
+    const reporter = req.user._id;
+    const reportedId = req.params.reportedId;
+    const { reason, details } = req.body;
+
+    const isReported = new Report({
+      reporter: reporter,
+      reportedUser: reportedId,
+      reason,
+      details,
+    });
+    await isReported.save();
+
+    res.status(200).json({ msg: "Post has been reported" });
+  } catch (error) {
+    res.status(500).json({ msg: "Internal Server Error" });
+  }
+};
+
+
+const savePost = async (req, res) => {
+  try {
+    const { postId } = req.body;
+    const userId = req.user._id;
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { $addToSet: { savedPosts: postId } },
+      { new: true }
+    );
+
+    res
+      .status(200)
+      .json({ msg: "Post saved successfully", savedPosts: user.savedPosts });
+  } catch (error) {
+    console.error("Error saving post:", error);
+    res.status(500).json({ msg: "Internal Server Error" });
+  }
+};
+
+
+const getSavedPosts = async (req, res) => {
+  try {
+    const userId = req.user._id; 
+    const user = await User.findById(userId).populate("savedPosts");
+
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    // Extract the saved posts from the user object
+    const savedPosts = user.savedPosts;
+
+    res.status(200).json(savedPosts);
+  } catch (error) {
+    console.error("Error retrieving saved posts:", error);
+    res.status(500).json({ msg: "Internal Server Error" });
   }
 };
 
@@ -202,5 +316,11 @@ module.exports = {
   unlikePost, //testing
   addCommentToPost, //testing
   deleteComment, //testing
-  getPopularPost
+  getPopularPost,
+  getLatestPost,
+  searchPost,
+  userFeed,
+  reportPost,
+  savePost,
+  getSavedPosts
 };

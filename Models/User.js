@@ -29,6 +29,7 @@ const userSchema = new mongoose.Schema({
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     posts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
+    savedPosts: [{type: mongoose.Schema.Types.ObjectId , ref: 'Post'}],
     createdAt: { type: Date, default: Date.now },
     bio: { type: String },
     profilePicture: { type: String },

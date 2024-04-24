@@ -1,5 +1,5 @@
 const User = require("../Models/User");
-const Report = require("../Models/Report")
+const Report = require("../Models/Report");
 const bcrypt = require("bcryptjs");
 
 const register = async (req, res) => {
@@ -106,7 +106,7 @@ const updateUserById = async (req, res) => {
     }
     res.status(200).json(updateUser);
   } catch (error) {
-    res.status(500).json({ msg: "internel server error" });
+    res.status(500).json({ msg: "internal server error" });
   }
 };
 
@@ -124,6 +124,13 @@ const followUser = async (req, res) => {
   try {
     const followingId = req.params.followingId;
     const user = req.user._id;
+    const isFollowing = await User.exists({
+      _id: user,
+      following: followingId,
+    });
+    if (isFollowing) {
+      return res.status(409).json("You are already following this user!");
+    }
     const updateList = await User.updateOne(
       { _id: user },
       {
@@ -132,9 +139,10 @@ const followUser = async (req, res) => {
         },
       }
     );
-    if (updateList.nModified == 0) {
-      return res.status(409).json("You are already following this user!");
-    }
+    await User.updateOne(
+      { _id: followingId },
+      { $addToSet: { followers: user } }
+    );
     res.status(200).json({ msg: "followed sucessfully" });
   } catch (error) {
     res.status(500).json({ msg: "Error in following" });
@@ -153,7 +161,7 @@ const followersList = async (req, res) => {
 
     res.status(200).json(followers);
   } catch (error) {
-    res.status(500).json({ msg: "internel server eror" });
+    res.status(500).json({ msg: "internal server eror" });
   }
 };
 
@@ -172,7 +180,7 @@ const followingList = async (req, res) => {
     const following = userFollowing.following.map((follow) => follow.username);
     res.status(200).json(following);
   } catch (error) {
-    res.status(500).json({ msg: "internel server error" });
+    res.status(500).json({ msg: "internal server error" });
   }
 };
 
@@ -201,7 +209,7 @@ const removePostByUser = async (req, res) => {
     if (!user) res.status(404).json({ msg: "no post found " });
     res.status(200).json({ msg: "post has been deleted" });
   } catch (error) {
-    res.status(500).json({ msg: "internel server error" });
+    res.status(500).json({ msg: "internal server error" });
   }
 };
 
@@ -213,7 +221,7 @@ const deleteUser = async (req, res) => {
     const user = await User.findOneAndDelete({ _id: userId });
     res.status(200).json({ msg: "user deleted" });
   } catch (error) {
-    res.status(500).json({ msg: "internel server error" });
+    res.status(500).json({ msg: "internal server error" });
   }
 };
 
@@ -223,38 +231,36 @@ const searchUser = async (req, res) => {
       username: { $regex: req.query.username, $options: "i" },
     }).select("-password");
 
-    if(!users) res.status(404).json({msg:"no user found"})
+    if (!users) res.status(404).json({ msg: "no user found" });
     res.status(200).json(users);
   } catch (error) {
     res.status(500).json({ msg: "Internal Server Error" });
   }
 };
 
-const reportUser = async(req,res) => {
+const reportUser = async (req, res) => {
   try {
     const reportedId = req.params.reportedId;
     const reporter = req.user._id;
-    const { reason , details } = req.body;
-    const isReported = await User.findOne({_id : reportedId});
+    const { reason, details } = req.body;
+    const isReported = await User.findOne({ _id: reportedId });
 
-    if(!isReported) res.status(404).json({msg:"user not found"});
+    if (!isReported) res.status(404).json({ msg: "user not found" });
 
-    const report  = new Report({
+    const report = new Report({
       reporter: reporter,
       reportedUser: reportedId,
       reason,
-      details
+      details,
     });
 
     await report.save();
 
-    res.status(200).json({msg:"user reported"})
-
+    res.status(200).json({ msg: "user reported" });
   } catch (error) {
-    res.status(500).json({msg:"interna server error"})
+    res.status(500).json({ msg: "interna server error" });
   }
-}
-
+};
 
 module.exports = {
   register,
@@ -270,5 +276,5 @@ module.exports = {
   removePostByUser,
   deleteUser,
   searchUser,
-  reportUser
+  reportUser,
 };
