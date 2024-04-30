@@ -351,6 +351,24 @@ const getLikesByPost = async(req,res) => {
   }
 }
 
+const postAnalytics = async(req,res) => {
+  try {
+    const userId = req.user._id;
+    
+    const posts = await Post.find({user : userId});
+
+    const analytics = posts.map((post) => ({
+      likes : post.likes.length,
+      comments: post.comments.length,
+    }));
+
+    res.status(200).json(analytics)
+
+  } catch (error) {
+    res.status(500).json({msg:"internal server error"})
+  }
+}
+
 module.exports = {
   createPost,
   getAllPost,
@@ -370,5 +388,6 @@ module.exports = {
   savePost,
   getSavedPosts,
   getLikes,
-  getLikesByPost
+  getLikesByPost,
+  postAnalytics
 };
